@@ -112,7 +112,158 @@ const clauses = {
 };
 
 // ====== 단어 -> (항, 세부) 정확 매핑 ======
-// 5항, 11항, 25항, 30항 그대로 유지
 const wordMap = {};
-...
+// 5항
+clauses["5항"].단어.forEach(w=>{
+  if(["소쩍새","어깨","오빠","으뜸","아끼다","기쁘다","깨끗하다","어떠하다","해쓱하다","가끔","거꾸로","부썩","어찌","이따금"].includes(w)) {
+    wordMap[w] = {clause:"5항", sub:"1"};
+  } else if(["산뜻하다","잔뜩","살짝","훨씬","담뿍","움찔","몽땅","엉뚱하다"].includes(w)) {
+    wordMap[w] = {clause:"5항", sub:"2"};
+  } else {
+    wordMap[w] = {clause:"5항", sub:"붙임"};
+  }
+});
+// 11항
+clauses["11항"].단어.forEach(w=>{
+  if(["양심","용궁","역사","유행","예의","이발"].includes(w)) {
+    wordMap[w] = {clause:"11항", sub:"1"};
+  } else if(["개량","선량","수력","협력","사례","혼례","와룡","쌍룡","하류","급류","도리","진리"].includes(w)) {
+    wordMap[w] = {clause:"11항", sub:"붙임1"};
+  } else {
+    wordMap[w] = {clause:"11항", sub:"3"};
+  }
+});
+// 25항
+clauses["25항"].단어.forEach(w=>{
+  if(["급히","꾸준히","도저히","딱히","어렴풋이","깨끗이"].includes(w)) {
+    wordMap[w] = {clause:"25항", sub:"1"};
+  } else if(["곰곰이","더욱이","생긋이","오뚝이","일찍이","해죽이"].includes(w)) {
+    wordMap[w] = {clause:"25항", sub:"2"};
+  } else {
+    wordMap[w] = {clause:"25항", sub:"붙임"};
+  }
+});
+// 30항
+clauses["30항"].단어.forEach(w=>{
+  if(["고랫재","귓밥","나뭇가지","냇가","뱃길","깻잎","나뭇잎","냇물","빗물"].includes(w)) {
+    wordMap[w] = {clause:"30항", sub:"1"};
+  } else if(["귓병","뱃병","봇둑","샛강","아랫방","자릿세","탯줄"].includes(w)) {
+    wordMap[w] = {clause:"30항", sub:"2"};
+  } else {
+    wordMap[w] = {clause:"30항", sub:"3"};
+  }
+});
 
+// ====== 게임 상태 ======
+let remaining = [...Object.keys(wordMap)];
+let currentWord = null;
+let currentCorrect = null;
+let score = 0;
+
+// ====== UI 요소 ======
+const startBtn = document.getElementById('startBtn');
+const quitBtn = document.getElementById('quitBtn');
+const wordEl = document.getElementById('word');
+const stage1El = document.getElementById('stage1');
+const stage2El = document.getElementById('stage2');
+const stage2Title = document.getElementById('stage2Title');
+const resultEl = document.getElementById('result');
+const nextBtn = document.getElementById('nextBtn');
+const showAnswerBtn = document.getElementById('showAnswerBtn');
+const scoreArea = document.getElementById('scoreArea');
+const gameArea = document.getElementById('gameArea');
+
+function startGame(){
+  score = 0;
+  scoreArea.textContent = `점수: ${score}`;
+  startBtn.style.display = 'none';
+  gameArea.style.display = 'block';
+  nextQuestion();
+}
+
+function quitGame(){
+  if(confirm("게임을 종료할까요?")) {
+    location.reload();
+  }
+}
+
+function nextQuestion(){
+  stage1El.innerHTML = '';
+  stage2El.innerHTML = '';
+  stage2Title.style.display = 'none';
+  resultEl.style.display = 'none';
+  nextBtn.style.display = 'none';
+  showAnswerBtn.style.display = 'none';
+
+  const idx = Math.floor(Math.random()*remaining.length);
+  currentWord = remaining[idx];
+  currentCorrect = wordMap[currentWord];
+  wordEl.textContent = currentWord;
+
+  // 1단계 버튼 생성
+  const keys = Object.keys(clauses);
+  keys.forEach(key=>{
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.type = 'button';
+    btn.textContent = `${clauses[key].문장}`;
+    btn.onclick = ()=>selectStage1(key);
+    stage1El.appendChild(btn);
+  });
+}
+
+function selectStage1(key){
+  stage2El.innerHTML = '';
+  stage2Title.style.display = 'block';
+  const subs = clauses[key].세부;
+  const subKeys = Object.keys(subs);
+  subKeys.forEach(sk=>{
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.type = 'button';
+    btn.textContent = `${subs[sk]}`;
+    btn.onclick = ()=>checkAnswer(key, sk);
+    stage2El.appendChild(btn);
+  });
+  window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});
+}
+
+function checkAnswer(selectedClause, selectedSub){
+  const correct = currentCorrect;
+  resultEl.style.display = 'block';
+  if(selectedClause === correct.clause && selectedSub === correct.sub){
+    resultEl.className = 'ok';
+    resultEl.textContent = '정답! 🎉  — 조항: ' + clauses[selectedClause].문장 + '\n근거 예: "' + currentWord + '"';
+    score++;
+    scoreArea.textContent = `점수: ${score}`;
+  } else {
+    resultEl.className = 'bad';
+    const correctClauseSentence = clauses[correct.clause].문장;
+    const correctSubSentence = clauses[correct.clause].세부[correct.sub];
+    resultEl.innerHTML = `<div>오답 😢</div>
+      <div style="margin-top:8px"><strong>정답 항목:</strong> ${correctClauseSentence}</div>
+      <div style="margin-top:6px"><strong>정답 세부:</strong> ${correctSubSentence}</div>
+      <div style="margin-top:8px"><strong>근거 예:</strong> "${currentWord}"</div>`;
+  }
+  Array.from(document.querySelectorAll('#stage1 button.opt')).forEach(b=>b.disabled=true);
+  Array.from(document.querySelectorAll('#stage2 button.opt')).forEach(b=>b.disabled=true);
+
+  nextBtn.style.display = 'inline-block';
+  showAnswerBtn.style.display = 'inline-block';
+}
+
+function showAnswer(){
+  const correct = currentCorrect;
+  const clauseSentence = clauses[correct.clause].문장;
+  const subSentence = clauses[correct.clause].세부[correct.sub];
+  alert(`정답(전체):\n${clauseSentence}\n\n세부:\n${subSentence}\n\n근거 예: "${currentWord}"`);
+}
+
+startBtn.onclick = startGame;
+quitBtn.onclick = quitGame;
+nextBtn.onclick = ()=>nextQuestion();
+showAnswerBtn.onclick = showAnswer;
+
+</script>
+</body>
+</html>
