@@ -1,1 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>한글 맞춤법 게임</title>
+<style>
+  :root{--bg:#f7f9ff;--card:#fff;--accent:#3b82f6;--ok:#16a34a;--bad:#ef4444}
+  body{font-family:Apple SD Gothic Neo,system-ui,Segoe UI,Roboto,'Noto Sans KR',sans-serif;background:var(--bg);margin:0;padding:24px;display:flex;justify-content:center}
+  .wrap{width:min(820px,96vw);background:var(--card);border-radius:12px;padding:20px;box-shadow:0 6px 20px rgba(30,30,60,0.08)}
+  h1{margin:0 0 12px;font-size:20px;text-align:center}
+  #word{font-size:28px;text-align:center;margin:14px 0;padding:10px 8px;border-radius:8px;background:#fbfdff}
+  .stage{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
+  button.opt{padding:12px;text-align:left;border-radius:8px;border:1px solid #dbeafe;background:#fff;cursor:pointer;font-size:15px}
+  button.opt:hover{background:#f1f8ff}
+  .small{font-size:13px;color:#444;opacity:.9}
+  #result{margin-top:14px;padding:12px;border-radius:8px;min-height:54px}
+  #result.ok{background:#ecfdf5;color:var(--ok);border:1px solid rgba(22,163,74,0.12)}
+  #result.bad{background:#fff1f2;color:var(--bad);border:1px solid rgba(239,68,68,0.08)}
+  .controls{display:flex;gap:10px;justify-content:center;margin-top:14px}
+  .btn{padding:10px 16px;border-radius:8px;border:none;cursor:pointer;font-size:15px}
+  .btn.primary{background:var(--accent);color:white}
+  .btn.ghost{background:transparent;border:1px solid #e6eefc}
+  .meta{margin-top:8px;font-size:13px;color:#666;text-align:center}
+  @media (min-width:700px){ .stage{grid-template-columns:1fr 1fr} }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>한글 맞춤법 게임</h1>
+
+    <div style="display:flex;gap:8px;justify-content:center">
+      <button id="startBtn" class="btn primary">게임 시작</button>
+      <button id="quitBtn" class="btn ghost">게임 종료</button>
+    </div>
+
+    <div id="gameArea" style="display:none">
+      <div id="word" aria-live="polite"></div>
+
+      <div id="stage1Title" class="small" style="margin-top:8px;text-align:left">1단계 — 아래 항(조항 전체 문장)을 골라주세요.</div>
+      <div id="stage1" class="stage"></div>
+
+      <div id="stage2Title" class="small" style="margin-top:12px;text-align:left;display:none">2단계 — 선택한 항의 세부(문장 전체)를 골라주세요.</div>
+      <div id="stage2" class="stage"></div>
+
+      <div id="result" style="display:none"></div>
+
+      <div class="controls">
+        <button id="nextBtn" class="btn primary" style="display:none">다음 문제 ▶</button>
+        <button id="showAnswerBtn" class="btn ghost" style="display:none">정답 보기</button>
+      </div>
+
+      <div class="meta" id="scoreArea">점수: 0</div>
+    </div>
+  </div>
+
+<script>
+// ====== 조항(원문)과 세부(원문) 정의 ======
+const clauses = {
+  "5항": {
+    "문장": "5항. 한 단어 안에서 뚜렷한 까닭 없이 나는 된소리는 다음 음절의 첫소리를 된소리로 적는다.",
+    "세부": {
+      "1": "1. 두 모음 사이에서 나는 된소리",
+      "2": "2. ‘ㄴ, ㄹ, ㅁ, ㅇ’ 받침 뒤에서 나는 된소리",
+      "붙임": "다만, ‘ㄱ, ㅂ’ 받침 뒤에서 나는 된소리는, 같은 음절이나 비슷한 음절이 겹쳐 나는 경우가 아니면 된소리로 적지 아니한다."
+    },
+    "단어":[
+      "소쩍새","어깨","오빠","으뜸","아끼다","기쁘다","깨끗하다","어떠하다","해쓱하다","가끔","거꾸로","부썩","어찌","이따금",
+      "산뜻하다","잔뜩","살짝","훨씬","담뿍","움찔","몽땅","엉뚱하다",
+      "국수","깍두기","딱지","색시","싹둑","법석","갑자기","몹시"
+    ]
+  },
+  "11항": {
+    "문장": "11항. 한자음 ‘랴, 려, 례, 료, 류, 리’가 단어의 첫머리에 올 적에는,\n두음 법칙에 따라 ‘야, 여, 예, 요, 유, 이’로 적는다.(ㄱ을 취하고, ㄴ을 버림.)",
+    "세부": {
+      "1": "11항-예시. 양심, 용궁, 역사, 유행, 예의, 이발",
+      "붙임1": "11항-붙임1. 단어의 첫머리 이외의 경우에는 본음대로 적는다.",
+      "3": "11항-3. 모음이나 ‘ㄴ’ 받침 뒤에 이어지는 ‘렬, 률’은 ‘열, 율’로 적는다.(ㄱ을 취하고 ㄴ을 버림.)"
+    },
+    "단어":[
+      "양심","용궁","역사","유행","예의","이발",
+      "개량","선량","수력","협력","사례","혼례","와룡","쌍룡","하류","급류","도리","진리",
+      "나열","분열","치열","선열","비열","진열","규율","선율","비율","전율","실패율","백분율"
+    ]
+  },
+  "25항": {
+    "문장": "25항. ‘-하다’가 붙는 어근에 ‘-히’나 ‘-이’가 붙어서 부사가 되거나, 부사에 ‘-이’가 붙어서 뜻을 더하는 경우에는 그 어근이나 부사의 원형을 밝히어 적는다.",
+    "세부": {
+      "1": "1. ‘-하다’가 붙는 어근에 ‘-히’나 ‘-이’가 붙는 경우",
+      "붙임": "붙임. ‘-하다’가 붙지 않는 경우에는 소리대로 적는다.",
+      "2": "2. 부사에 ‘-이’가 붙어서 역시 부사가 되는 경우"
+    },
+    "단어":[
+      "급히","꾸준히","도저히","딱히","어렴풋이","깨끗이",
+      "갑자기","반드시","슬며시",
+      "곰곰이","더욱이","생긋이","오뚝이","일찍이","해죽이"
+    ]
+  },
+  "30항": {
+    "문장": "30항.사이시옷은 다음과 같은 경우에 받치어 적는다.",
+    "세부": {
+      "1": "1. 순우리말로 된 합성어로서 앞말이 모음으로 끝난 경우",
+      "2": "2. 순우리말과 한자어로 된 합성어로서 앞말이 모음으로 끝난 경우",
+      "3": "3. 두 음절로 된 다음 한자어"
+    },
+    "단어":[
+      "고랫재","귓밥","나뭇가지","냇가","뱃길","깻잎","나뭇잎","냇물","빗물",
+      "귓병","뱃병","봇둑","샛강","아랫방","자릿세","탯줄",
+      "곳간","셋방","숫자","찻간","횟수"
+    ]
+  }
+};
+
+// ====== 단어 -> (항, 세부) 정확 매핑 ======
+// 5항, 11항, 25항, 30항 그대로 유지
+const wordMap = {};
+...
 
